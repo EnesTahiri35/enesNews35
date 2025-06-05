@@ -3,29 +3,51 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, User } from "lucide-react";
+import { ArrowLeft, Calendar } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Article {
-  id: number;
+  id: string;
   title: string;
   content: string;
   category: string;
   image: string;
-  date: string;
+  created_at: string;
   excerpt: string;
 }
 
 const Article = () => {
   const { id } = useParams();
   const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedArticles = localStorage.getItem("newsArticles");
-    if (savedArticles) {
-      const articles: Article[] = JSON.parse(savedArticles);
-      const foundArticle = articles.find(a => a.id === parseInt(id || "0"));
-      setArticle(foundArticle || null);
-    }
+    const fetchArticle = async () => {
+      if (!id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('id', id)
+          .eq('published', true)
+          .single();
+
+        if (error) {
+          console.error('Error fetching article:', error);
+          setArticle(null);
+        } else {
+          setArticle(data);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setArticle(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticle();
   }, [id]);
 
   const formatDate = (dateString: string) => {
@@ -35,6 +57,16 @@ const Article = () => {
       day: 'numeric'
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h1>
+        </div>
+      </div>
+    );
+  }
 
   if (!article) {
     return (
@@ -76,7 +108,7 @@ const Article = () => {
                 <Badge variant="secondary">{article.category}</Badge>
                 <div className="flex items-center text-sm text-gray-500">
                   <Calendar className="w-4 h-4 mr-1" />
-                  {formatDate(article.date)}
+                  {formatDate(article.created_at)}
                 </div>
               </div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
@@ -87,7 +119,7 @@ const Article = () => {
             {/* Article Image */}
             <div className="aspect-video overflow-hidden rounded-lg mb-8">
               <img
-                src={article.image}
+                src={article.image || "/placeholder.svg"}
                 alt={article.title}
                 className="w-full h-full object-cover"
               />

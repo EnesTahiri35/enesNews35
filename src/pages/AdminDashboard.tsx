@@ -7,17 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, LogOut, Edit, Calendar } from "lucide-react";
+import { Plus, Trash2, LogOut, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Article {
-  id: number;
+  id: string;
   title: string;
   content: string;
   category: string;
   image: string;
-  date: string;
+  created_at: string;
   excerpt: string;
+  author_id: string;
+  published: boolean;
 }
 
 const AdminDashboard = () => {
@@ -31,32 +35,61 @@ const AdminDashboard = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
-    // Check if admin is logged in
-    const isLoggedIn = localStorage.getItem("adminLoggedIn");
-    if (!isLoggedIn) {
+    // Check if user is authenticated
+    if (!user) {
       navigate("/admin");
       return;
     }
 
-    // Load articles
-    const savedArticles = localStorage.getItem("newsArticles");
-    if (savedArticles) {
-      setArticles(JSON.parse(savedArticles));
-    }
-  }, [navigate]);
+    // Load articles from Supabase
+    fetchArticles();
+  }, [user, navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminLoggedIn");
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully.",
-    });
-    navigate("/admin");
+  const fetchArticles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching articles:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load articles",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setArticles(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load articles",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAddArticle = (e: React.FormEvent) => {
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
+      navigate("/admin");
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const handleAddArticle = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newArticle.title || !newArticle.content || !newArticle.category) {
@@ -68,43 +101,98 @@ const AdminDashboard = () => {
       return;
     }
 
-    const article: Article = {
-      id: Date.now(),
-      title: newArticle.title,
-      content: newArticle.content,
-      category: newArticle.category,
-      image: newArticle.image,
-      date: new Date().toISOString().split('T')[0],
-      excerpt: newArticle.content.substring(0, 150) + "..."
-    };
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create articles.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const updatedArticles = [article, ...articles];
-    setArticles(updatedArticles);
-    localStorage.setItem("newsArticles", JSON.stringify(updatedArticles));
+    try {
+      const { data, error } = await supabase
+        .from('articles')
+        .insert([
+          {
+            title: newArticle.title,
+            content: newArticle.content,
+            category: newArticle.category,
+            image: newArticle.image,
+            excerpt: newArticle.content.substring(0, 150) + "...",
+            author_id: user.id,
+            published: true
+          }
+        ])
+        .select();
 
-    toast({
-      title: "Article added",
-      description: "The article has been published successfully.",
-    });
+      if (error) {
+        console.error('Error creating article:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create article. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    setNewArticle({
-      title: "",
-      content: "",
-      category: "",
-      image: "/placeholder.svg"
-    });
-    setIsAddingArticle(false);
+      toast({
+        title: "Article added",
+        description: "The article has been published successfully.",
+      });
+
+      setNewArticle({
+        title: "",
+        content: "",
+        category: "",
+        image: "/placeholder.svg"
+      });
+      setIsAddingArticle(false);
+      
+      // Refresh articles list
+      fetchArticles();
+    } catch (error) {
+      console.error('Error creating article:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create article. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteArticle = (id: number) => {
-    const updatedArticles = articles.filter(article => article.id !== id);
-    setArticles(updatedArticles);
-    localStorage.setItem("newsArticles", JSON.stringify(updatedArticles));
+  const handleDeleteArticle = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', id);
 
-    toast({
-      title: "Article deleted",
-      description: "The article has been removed successfully.",
-    });
+      if (error) {
+        console.error('Error deleting article:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete article. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Article deleted",
+        description: "The article has been removed successfully.",
+      });
+
+      // Refresh articles list
+      fetchArticles();
+    } catch (error) {
+      console.error('Error deleting article:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete article. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -226,7 +314,7 @@ const AdminDashboard = () => {
                         <Badge variant="secondary">{article.category}</Badge>
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar className="w-4 h-4 mr-1" />
-                          {formatDate(article.date)}
+                          {formatDate(article.created_at)}
                         </div>
                       </div>
                       <h3 className="font-semibold text-lg mb-1">{article.title}</h3>
