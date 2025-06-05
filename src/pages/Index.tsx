@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, User } from "lucide-react";
+import { Search, Calendar, User, Clock, CloudSun } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Article {
@@ -22,7 +22,22 @@ const Index = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
+  const [currentTime, setCurrentTime] = useState("");
+  const [weather, setWeather] = useState("22°C Sunny");
   const { toast } = useToast();
+
+  // Update time every second
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString());
+    };
+    
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Load articles from localStorage or use mock data
@@ -77,7 +92,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
@@ -86,7 +101,19 @@ const Index = () => {
               <h1 className="text-3xl font-bold text-gray-900">News Portal</h1>
               <p className="text-gray-600 mt-1">Stay updated with the latest news</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-4">
+              {/* Time Display */}
+              <div className="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+                <Clock className="w-4 h-4 mr-2" />
+                <span className="font-mono">{currentTime}</span>
+              </div>
+              
+              {/* Weather Display */}
+              <div className="flex items-center text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg">
+                <CloudSun className="w-4 h-4 mr-2" />
+                <span>{weather}</span>
+              </div>
+              
               <Link to="/admin">
                 <Button variant="outline" size="sm">
                   <User className="w-4 h-4 mr-2" />
@@ -117,7 +144,7 @@ const Index = () => {
       </section>
 
       {/* Articles Section */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 flex-1">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">Latest News</h2>
           <p className="text-gray-600">{filteredArticles.length} articles found</p>
@@ -163,6 +190,20 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 mt-auto">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <p className="text-gray-300">
+              Contact us: <a href="mailto:EnesTahiri1516@gmail.com" className="text-blue-400 hover:text-blue-300">EnesTahiri1516@gmail.com</a>
+            </p>
+            <p className="text-gray-500 text-sm mt-2">
+              © 2024 News Portal. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
