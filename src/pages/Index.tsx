@@ -5,16 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, User, Clock, CloudSun } from "lucide-react";
+import { Search, Calendar, User, Clock, CloudSun, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { AuthModal } from "@/components/AuthModal";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Article {
-  id: number;
+  id: string;
   title: string;
   content: string;
   category: string;
   image: string;
-  date: string;
+  created_at: string;
   excerpt: string;
 }
 
@@ -24,7 +27,10 @@ const Index = () => {
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [currentTime, setCurrentTime] = useState("");
   const [weather, setWeather] = useState("22°C Sunny");
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
 
   // Update time every second
   useEffect(() => {
@@ -40,39 +46,33 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    // Load articles from localStorage or use mock data
-    const savedArticles = localStorage.getItem("newsArticles");
-    if (savedArticles) {
-      const parsedArticles = JSON.parse(savedArticles);
-      setArticles(parsedArticles);
-      setFilteredArticles(parsedArticles);
-    } else {
-      // Mock initial data
-      const mockArticles: Article[] = [
-        {
-          id: 1,
-          title: "Breaking: Technology Revolution Continues",
-          content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-          category: "Technology",
-          image: "/placeholder.svg",
-          date: new Date().toISOString().split('T')[0],
-          excerpt: "Technology continues to evolve at an unprecedented pace..."
-        },
-        {
-          id: 2,
-          title: "Global Climate Summit Reaches New Agreements",
-          content: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-          category: "Environment",
-          image: "/placeholder.svg",
-          date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-          excerpt: "World leaders unite on climate action initiatives..."
-        }
-      ];
-      setArticles(mockArticles);
-      setFilteredArticles(mockArticles);
-      localStorage.setItem("newsArticles", JSON.stringify(mockArticles));
-    }
+    fetchArticles();
   }, []);
+
+  const fetchArticles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching articles:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load articles",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setArticles(data || []);
+      setFilteredArticles(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   useEffect(() => {
     const filtered = articles.filter(article =>
@@ -89,6 +89,19 @@ const Index = () => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed out",
+      description: "You have been signed out successfully.",
+    });
+  };
+
+  const openAuthModal = (mode: 'signin' | 'signup') => {
+    setAuthMode(mode);
+    setAuthModalOpen(true);
   };
 
   return (
@@ -114,12 +127,32 @@ const Index = () => {
                 <span>{weather}</span>
               </div>
               
-              <Link to="/admin">
-                <Button variant="outline" size="sm">
-                  <User className="w-4 h-4 mr-2" />
-                  Admin
-                </Button>
-              </Link>
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    Welcome, {user.email}
+                  </span>
+                  <Button onClick={handleSignOut} variant="outline" size="sm">
+                    Sign Out
+                  </Button>
+                  <Link to="/admin">
+                    <Button variant="outline" size="sm">
+                      <User className="w-4 h-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => openAuthModal('signin')} variant="outline" size="sm">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Sign In
+                  </Button>
+                  <Button onClick={() => openAuthModal('signup')} size="sm">
+                    Sign Up
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -160,7 +193,7 @@ const Index = () => {
               <Card key={article.id} className="hover:shadow-lg transition-shadow duration-200">
                 <div className="aspect-video overflow-hidden rounded-t-lg">
                   <img
-                    src={article.image}
+                    src={article.image || "/placeholder.svg"}
                     alt={article.title}
                     className="w-full h-full object-cover"
                   />
@@ -170,7 +203,7 @@ const Index = () => {
                     <Badge variant="secondary">{article.category}</Badge>
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="w-4 h-4 mr-1" />
-                      {formatDate(article.date)}
+                      {formatDate(article.created_at)}
                     </div>
                   </div>
                   <CardTitle className="line-clamp-2">{article.title}</CardTitle>
@@ -204,6 +237,13 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authMode}
+        onModeChange={setAuthMode}
+      />
     </div>
   );
 };
