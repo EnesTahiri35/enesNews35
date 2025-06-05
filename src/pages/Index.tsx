@@ -198,9 +198,7 @@ const Index = () => {
             <p className="text-gray-300">
               Contact us: <a href="mailto:EnesTahiri1516@gmail.com" className="text-blue-400 hover:text-blue-300">EnesTahiri1516@gmail.com</a>
             </p>
-            <p className="text-gray-500 text-sm mt-2">
-              © 2024 News Portal. All rights reserved.
-            </p>
+            <p className="text-gray-500 text-sm mt-2">© 2025 Enes News Portal. All rights reserved.</p>
           </div>
         </div>
       </footer>
