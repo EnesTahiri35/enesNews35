@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthModal } from "@/components/AuthModal";
 import { supabase } from "@/integrations/supabase/client";
+
 interface Article {
   id: string;
   title: string;
@@ -18,6 +20,7 @@ interface Article {
   created_at: string;
   excerpt: string;
 }
+
 const Index = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,13 +29,8 @@ const Index = () => {
   const [weather, setWeather] = useState("22°C Sunny");
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const {
-    toast
-  } = useToast();
-  const {
-    user,
-    signOut
-  } = useAuth();
+  const { toast } = useToast();
+  const { user, signOut } = useAuth();
 
   // Update time every second
   useEffect(() => {
@@ -40,40 +38,51 @@ const Index = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString());
     };
+    
     updateTime();
     const interval = setInterval(updateTime, 1000);
+    
     return () => clearInterval(interval);
   }, []);
+
   useEffect(() => {
     fetchArticles();
   }, []);
+
   const fetchArticles = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('articles').select('*').eq('published', true).order('created_at', {
-        ascending: false
-      });
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false });
+
       if (error) {
         console.error('Error fetching articles:', error);
         toast({
           title: "Error",
           description: "Failed to load articles",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
+
       setArticles(data || []);
       setFilteredArticles(data || []);
     } catch (error) {
       console.error('Error:', error);
     }
   };
+
   useEffect(() => {
-    const filtered = articles.filter(article => article.title.toLowerCase().includes(searchTerm.toLowerCase()) || article.content.toLowerCase().includes(searchTerm.toLowerCase()) || article.category.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filtered = articles.filter(article =>
+      article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      article.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      article.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     setFilteredArticles(filtered);
   }, [searchTerm, articles]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -81,24 +90,28 @@ const Index = () => {
       day: 'numeric'
     });
   };
+
   const handleSignOut = async () => {
     await signOut();
     toast({
       title: "Signed out",
-      description: "You have been signed out successfully."
+      description: "You have been signed out successfully.",
     });
   };
+
   const openAuthModal = (mode: 'signin' | 'signup') => {
     setAuthMode(mode);
     setAuthModalOpen(true);
   };
-  return <div className="min-h-screen bg-gray-50 flex flex-col">
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Enes News Portal</h1>
+              <h1 className="text-3xl font-bold text-gray-900">News Portal</h1>
               <p className="text-gray-600 mt-1">Stay updated with the latest news</p>
             </div>
             <div className="flex items-center gap-4">
@@ -114,7 +127,8 @@ const Index = () => {
                 <span>{weather}</span>
               </div>
               
-              {user ? <div className="flex items-center gap-2">
+              {user ? (
+                <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">
                     Welcome, {user.email}
                   </span>
@@ -127,7 +141,9 @@ const Index = () => {
                       Admin
                     </Button>
                   </Link>
-                </div> : <div className="flex items-center gap-2">
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
                   <Button onClick={() => openAuthModal('signin')} variant="outline" size="sm">
                     <LogIn className="w-4 h-4 mr-2" />
                     Sign In
@@ -135,7 +151,8 @@ const Index = () => {
                   <Button onClick={() => openAuthModal('signup')} size="sm">
                     Sign Up
                   </Button>
-                </div>}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -147,7 +164,13 @@ const Index = () => {
           <div className="max-w-md mx-auto">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input type="text" placeholder="Search articles..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+              <Input
+                type="text"
+                placeholder="Search articles..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </div>
         </div>
@@ -160,12 +183,20 @@ const Index = () => {
           <p className="text-gray-600">{filteredArticles.length} articles found</p>
         </div>
 
-        {filteredArticles.length === 0 ? <div className="text-center py-12">
+        {filteredArticles.length === 0 ? (
+          <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No articles found matching your search.</p>
-          </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map(article => <Card key={article.id} className="hover:shadow-lg transition-shadow duration-200">
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredArticles.map((article) => (
+              <Card key={article.id} className="hover:shadow-lg transition-shadow duration-200">
                 <div className="aspect-video overflow-hidden rounded-t-lg">
-                  <img src={article.image || "/placeholder.svg"} alt={article.title} className="w-full h-full object-cover" />
+                  <img
+                    src={article.image || "/placeholder.svg"}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
@@ -187,8 +218,10 @@ const Index = () => {
                     </Button>
                   </Link>
                 </CardContent>
-              </Card>)}
-          </div>}
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Footer */}
@@ -198,12 +231,21 @@ const Index = () => {
             <p className="text-gray-300">
               Contact us: <a href="mailto:EnesTahiri1516@gmail.com" className="text-blue-400 hover:text-blue-300">EnesTahiri1516@gmail.com</a>
             </p>
-            <p className="text-gray-500 text-sm mt-2">© 2025 Enes News Portal. All rights reserved.</p>
+            <p className="text-gray-500 text-sm mt-2">
+              © 2024 News Portal. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
 
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} mode={authMode} onModeChange={setAuthMode} />
-    </div>;
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authMode}
+        onModeChange={setAuthMode}
+      />
+    </div>
+  );
 };
+
 export default Index;
