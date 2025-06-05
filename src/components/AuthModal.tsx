@@ -14,11 +14,11 @@ interface AuthModalProps {
   onModeChange: (mode: 'signin' | 'signup') => void;
 }
 
-export const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProps) => {
+export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,9 +26,7 @@ export const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProp
     setLoading(true);
 
     try {
-      const { error } = mode === 'signin' 
-        ? await signIn(email, password)
-        : await signUp(email, password);
+      const { error } = await signIn(email, password);
 
       if (error) {
         toast({
@@ -38,10 +36,8 @@ export const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProp
         });
       } else {
         toast({
-          title: mode === 'signin' ? 'Welcome back!' : 'Account created!',
-          description: mode === 'signin' 
-            ? 'You have been signed in successfully.' 
-            : 'Please check your email to confirm your account.',
+          title: 'Welcome back!',
+          description: 'You have been signed in successfully.',
         });
         onClose();
         setEmail('');
@@ -62,14 +58,9 @@ export const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProp
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'signin' ? 'Sign In' : 'Sign Up'}
-          </DialogTitle>
+          <DialogTitle>Admin Login</DialogTitle>
           <DialogDescription>
-            {mode === 'signin' 
-              ? 'Enter your credentials to access your account' 
-              : 'Create a new account to get started'
-            }
+            Enter your admin credentials to access the content management system
           </DialogDescription>
         </DialogHeader>
         
@@ -82,7 +73,7 @@ export const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProp
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
+              placeholder="Enter your admin email"
             />
           </div>
           
@@ -94,41 +85,15 @@ export const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProp
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter your password"
+              placeholder="Enter your admin password"
               minLength={6}
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Please wait...' : (mode === 'signin' ? 'Sign In' : 'Sign Up')}
+            {loading ? 'Please wait...' : 'Sign In'}
           </Button>
         </form>
-
-        <div className="text-center text-sm">
-          {mode === 'signin' ? (
-            <span>
-              Don't have an account?{' '}
-              <button
-                type="button"
-                onClick={() => onModeChange('signup')}
-                className="text-blue-600 hover:underline"
-              >
-                Sign up
-              </button>
-            </span>
-          ) : (
-            <span>
-              Already have an account?{' '}
-              <button
-                type="button"
-                onClick={() => onModeChange('signin')}
-                className="text-blue-600 hover:underline"
-              >
-                Sign in
-              </button>
-            </span>
-          )}
-        </div>
       </DialogContent>
     </Dialog>
   );

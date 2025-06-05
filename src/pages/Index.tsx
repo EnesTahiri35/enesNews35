@@ -140,10 +140,7 @@ const Index = () => {
                 <div className="flex items-center gap-2">
                   <Button onClick={() => openAuthModal('signin')} variant="outline" size="sm">
                     <LogIn className="w-4 h-4 mr-2" />
-                    Sign In
-                  </Button>
-                  <Button onClick={() => openAuthModal('signup')} size="sm">
-                    Sign Up
+                    Admin Login
                   </Button>
                 </div>
               )}
