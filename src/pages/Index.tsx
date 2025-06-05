@@ -8,7 +8,9 @@ import { Search, Calendar, User, Clock, CloudSun, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthModal } from "@/components/AuthModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+
 interface Article {
   id: string;
   title: string;
@@ -18,6 +20,7 @@ interface Article {
   created_at: string;
   excerpt: string;
 }
+
 const Index = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,30 +95,35 @@ const Index = () => {
     setAuthMode(mode);
     setAuthModalOpen(true);
   };
-  return <div className="min-h-screen bg-gray-50 flex flex-col">
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Enes News Portal</h1>
-              <p className="text-gray-600 mt-1">Stay updated with the latest news</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Enes News Portal</h1>
+              <p className="text-gray-600 dark:text-gray-300 mt-1">Stay updated with the latest news</p>
             </div>
             <div className="flex items-center gap-4">
               {/* Time Display */}
-              <div className="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg">
                 <Clock className="w-4 h-4 mr-2" />
                 <span className="font-mono">{currentTime}</span>
               </div>
               
               {/* Weather Display */}
-              <div className="flex items-center text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/50 px-3 py-2 rounded-lg">
                 <CloudSun className="w-4 h-4 mr-2" />
                 <span>{weather}</span>
               </div>
               
-              {user ? <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">
+              {/* Theme Toggle */}
+              <ThemeToggle />
+              
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
                     Welcome, {user.email}
                   </span>
                   <Button onClick={handleSignOut} variant="outline" size="sm">
@@ -127,7 +135,9 @@ const Index = () => {
                       Admin
                     </Button>
                   </Link>
-                </div> : <div className="flex items-center gap-2">
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
                   <Button onClick={() => openAuthModal('signin')} variant="outline" size="sm">
                     <LogIn className="w-4 h-4 mr-2" />
                     Sign In
@@ -135,19 +145,26 @@ const Index = () => {
                   <Button onClick={() => openAuthModal('signup')} size="sm">
                     Sign Up
                   </Button>
-                </div>}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
       {/* Search Section */}
-      <section className="bg-white py-8">
+      <section className="bg-white dark:bg-gray-800 py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input type="text" placeholder="Search articles..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search articles..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </div>
         </div>
@@ -156,27 +173,35 @@ const Index = () => {
       {/* Articles Section */}
       <main className="container mx-auto px-4 py-8 flex-1">
         <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Latest News</h2>
-          <p className="text-gray-600">{filteredArticles.length} articles found</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Latest News</h2>
+          <p className="text-gray-600 dark:text-gray-300">{filteredArticles.length} articles found</p>
         </div>
 
-        {filteredArticles.length === 0 ? <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No articles found matching your search.</p>
-          </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map(article => <Card key={article.id} className="hover:shadow-lg transition-shadow duration-200">
+        {filteredArticles.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400 text-lg">No articles found matching your search.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredArticles.map((article) => (
+              <Card key={article.id} className="hover:shadow-lg transition-shadow duration-200 dark:bg-gray-800 dark:border-gray-700">
                 <div className="aspect-video overflow-hidden rounded-t-lg">
-                  <img src={article.image || "/placeholder.svg"} alt={article.title} className="w-full h-full object-cover" />
+                  <img
+                    src={article.image || "/placeholder.svg"}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <Badge variant="secondary">{article.category}</Badge>
-                    <div className="flex items-center text-sm text-gray-500">
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                       <Calendar className="w-4 h-4 mr-1" />
                       {formatDate(article.created_at)}
                     </div>
                   </div>
-                  <CardTitle className="line-clamp-2">{article.title}</CardTitle>
-                  <CardDescription className="line-clamp-3">
+                  <CardTitle className="line-clamp-2 dark:text-white">{article.title}</CardTitle>
+                  <CardDescription className="line-clamp-3 dark:text-gray-300">
                     {article.excerpt}
                   </CardDescription>
                 </CardHeader>
@@ -187,12 +212,14 @@ const Index = () => {
                     </Button>
                   </Link>
                 </CardContent>
-              </Card>)}
-          </div>}
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-auto">
+      <footer className="bg-gray-900 dark:bg-gray-950 text-white py-8 mt-auto">
         <div className="container mx-auto px-4">
           <div className="text-center">
             <p className="text-gray-300">
@@ -203,7 +230,14 @@ const Index = () => {
         </div>
       </footer>
 
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} mode={authMode} onModeChange={setAuthMode} />
-    </div>;
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authMode}
+        onModeChange={setAuthMode}
+      />
+    </div>
+  );
 };
+
 export default Index;
