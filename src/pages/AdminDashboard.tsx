@@ -77,41 +77,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const ensureBucketExists = async () => {
-    try {
-      // First, try to list buckets to see if 'images' exists
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      
-      if (listError) {
-        console.error('Error listing buckets:', listError);
-        return false;
-      }
-
-      const imagesBucket = buckets?.find(bucket => bucket.name === 'images');
-      
-      if (!imagesBucket) {
-        // Create the bucket if it doesn't exist
-        const { error: createError } = await supabase.storage.createBucket('images', {
-          public: true,
-          allowedMimeTypes: ['image/*'],
-          fileSizeLimit: 5242880 // 5MB
-        });
-
-        if (createError) {
-          console.error('Error creating bucket:', createError);
-          return false;
-        }
-        
-        console.log('Created images bucket successfully');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error ensuring bucket exists:', error);
-      return false;
-    }
-  };
-
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -139,33 +104,48 @@ const AdminDashboard = () => {
     setIsUploadingImage(true);
 
     try {
-      // Ensure bucket exists
-      const bucketExists = await ensureBucketExists();
-      if (!bucketExists) {
-        throw new Error('Failed to create or access storage bucket');
-      }
-
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `content-images/${fileName}`;
 
       console.log('Uploading file:', filePath);
 
-      const { error: uploadError } = await supabase.storage
-        .from('images')
+      // Try to upload to the default bucket first
+      let uploadError: any = null;
+      let publicUrl = '';
+
+      // First, try uploading to a 'content' bucket
+      const { error: contentUploadError } = await supabase.storage
+        .from('content')
         .upload(filePath, file);
+
+      if (!contentUploadError) {
+        const { data } = supabase.storage
+          .from('content')
+          .getPublicUrl(filePath);
+        publicUrl = data.publicUrl;
+      } else {
+        // If 'content' bucket doesn't exist, try 'images' bucket
+        const { error: imagesUploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, file);
+
+        if (!imagesUploadError) {
+          const { data } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          publicUrl = data.publicUrl;
+        } else {
+          uploadError = imagesUploadError;
+        }
+      }
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw uploadError;
+        throw new Error('No available storage bucket found. Please contact administrator to set up image storage.');
       }
 
-      const { data } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-
-      const imageUrl = data.publicUrl;
-      console.log('Image uploaded successfully:', imageUrl);
+      console.log('Image uploaded successfully:', publicUrl);
       
       // Insert image markdown at cursor position
       const textarea = contentTextareaRef.current;
@@ -173,7 +153,7 @@ const AdminDashboard = () => {
         const cursorPosition = textarea.selectionStart;
         const textBefore = newArticle.content.substring(0, cursorPosition);
         const textAfter = newArticle.content.substring(cursorPosition);
-        const imageMarkdown = `\n\n![Image](${imageUrl})\n\n`;
+        const imageMarkdown = `\n\n![Image](${publicUrl})\n\n`;
         
         const newContent = textBefore + imageMarkdown + textAfter;
         setNewArticle({...newArticle, content: newContent});
