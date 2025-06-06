@@ -77,6 +77,41 @@ const AdminDashboard = () => {
     }
   };
 
+  const ensureBucketExists = async () => {
+    try {
+      // First, try to list buckets to see if 'images' exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error('Error listing buckets:', listError);
+        return false;
+      }
+
+      const imagesBucket = buckets?.find(bucket => bucket.name === 'images');
+      
+      if (!imagesBucket) {
+        // Create the bucket if it doesn't exist
+        const { error: createError } = await supabase.storage.createBucket('images', {
+          public: true,
+          allowedMimeTypes: ['image/*'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+
+        if (createError) {
+          console.error('Error creating bucket:', createError);
+          return false;
+        }
+        
+        console.log('Created images bucket successfully');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error ensuring bucket exists:', error);
+      return false;
+    }
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -104,15 +139,24 @@ const AdminDashboard = () => {
     setIsUploadingImage(true);
 
     try {
+      // Ensure bucket exists
+      const bucketExists = await ensureBucketExists();
+      if (!bucketExists) {
+        throw new Error('Failed to create or access storage bucket');
+      }
+
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `content-images/${fileName}`;
+
+      console.log('Uploading file:', filePath);
 
       const { error: uploadError } = await supabase.storage
         .from('images')
         .upload(filePath, file);
 
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         throw uploadError;
       }
 
@@ -121,6 +165,7 @@ const AdminDashboard = () => {
         .getPublicUrl(filePath);
 
       const imageUrl = data.publicUrl;
+      console.log('Image uploaded successfully:', imageUrl);
       
       // Insert image markdown at cursor position
       const textarea = contentTextareaRef.current;
@@ -151,7 +196,7 @@ const AdminDashboard = () => {
       console.error('Error uploading image:', error);
       toast({
         title: "Error",
-        description: "Failed to upload image",
+        description: `Failed to upload image: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
