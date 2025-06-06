@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, LogOut, Calendar } from "lucide-react";
+import { Plus, Trash2, LogOut, Calendar, ImagePlus, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +32,8 @@ const AdminDashboard = () => {
     category: "",
     image: "/placeholder.svg"
   });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
@@ -73,6 +74,90 @@ const AdminDashboard = () => {
         description: "Failed to load articles",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error", 
+        description: "Image size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `content-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      const imageUrl = data.publicUrl;
+      
+      // Insert image markdown at cursor position
+      const textarea = contentTextareaRef.current;
+      if (textarea) {
+        const cursorPosition = textarea.selectionStart;
+        const textBefore = newArticle.content.substring(0, cursorPosition);
+        const textAfter = newArticle.content.substring(cursorPosition);
+        const imageMarkdown = `\n\n![Image](${imageUrl})\n\n`;
+        
+        const newContent = textBefore + imageMarkdown + textAfter;
+        setNewArticle({...newArticle, content: newContent});
+        
+        // Set cursor position after the inserted image
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(
+            cursorPosition + imageMarkdown.length,
+            cursorPosition + imageMarkdown.length
+          );
+        }, 0);
+      }
+
+      toast({
+        title: "Success",
+        description: "Image uploaded and inserted into content",
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -264,19 +349,48 @@ const AdminDashboard = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="content">Content *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="content">Content *</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        style={{ display: 'none' }}
+                        id="image-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('image-upload')?.click()}
+                        disabled={isUploadingImage}
+                      >
+                        {isUploadingImage ? (
+                          <Upload className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <ImagePlus className="w-4 h-4 mr-2" />
+                        )}
+                        {isUploadingImage ? "Uploading..." : "Add Image"}
+                      </Button>
+                    </div>
+                  </div>
                   <Textarea
                     id="content"
+                    ref={contentTextareaRef}
                     value={newArticle.content}
                     onChange={(e) => setNewArticle({...newArticle, content: e.target.value})}
-                    placeholder="Write your article content here..."
+                    placeholder="Write your article content here... You can add images using the 'Add Image' button above."
                     rows={8}
                     required
                   />
+                  <p className="text-xs text-gray-500">
+                    Tip: Click where you want to insert an image in the content, then use the "Add Image" button.
+                  </p>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="image">Image URL</Label>
+                  <Label htmlFor="image">Featured Image URL</Label>
                   <Input
                     id="image"
                     value={newArticle.image}
