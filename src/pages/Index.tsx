@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, User, Clock, CloudSun, LogIn, Menu, X } from "lucide-react";
+import { Search, Calendar, User, Clock, CloudSun, LogIn, Menu, X, Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthModal } from "@/components/AuthModal";
